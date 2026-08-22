@@ -1,0 +1,153 @@
+// 社労士事務所向け業務タスク管理アプリ DB定義
+// まずはSQLiteで動かし、将来的にPostgreSQLへ移行しやすいよう
+// DB固有機能(配列型/JSON型等)は使わず標準的なリレーショナル設計にしている。
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 事務所スタッフ(担当者) 簡易ログイン用
+model StaffUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("staff") // staff | admin
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedTasks Task[] @relation("assignee")
+  notes         Note[]
+}
+
+// 顧問先企業
+model Client {
+  id                 String   @id @default(cuid())
+  name               String
+  contactName        String?
+  contactEmail       String?
+  contactPhone       String?
+  plan               String? // 契約プラン
+  notes              String?
+  hasPayroll         Boolean  @default(true) // 給与計算あり。trueのクライアントのみ月次給与タスクの一括生成対象にする
+  payrollClosingDay  Int? // 給与締め日 (1-31, 31=末日として扱う)
+  payrollPayDay      Int? // 給与支払日 (1-31)
+  payrollPayMonthOffset Int @default(1) // 支払月オフセット(0=当月払い,1=翌月払い)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tasks     Task[]
+}
+
+// 入退社/給与/助成金以外に追加されたカスタムタスク種別。
+// Task.category / TaskTemplate.category にはこの name の値をそのまま格納するため、
+// (デフォルトの3種別と違って)参照整合性は持たない。追加した種別を選択肢として
+// 一覧・提示するためだけのマスタ。
+model TaskCategoryDef {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// タスク種別ごとのチェックリスト・テンプレート
+model TaskTemplate {
+  id          String   @id @default(cuid())
+  category    String // HR | PAYROLL | GRANT
+  subType     String // ONBOARDING | OFFBOARDING | MONTHLY | YEAREND | BONUS | グラント名など
+  name        String
+  description String?
+  baseDateLabel String @default("起算日") // 給与/助成金/カスタム種別で「何を起算日とするか」の説明(例: 支給決定日)。新規タスク作成時に案内文として表示する。
+  titleTemplate String? // タスク名の自動生成パターン(例: "{client} {subType}申請")。空の場合は種別ごとの既定の命名規則を使う。
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items TemplateItem[]
+}
+
+model TemplateItem {
+  id             String       @id @default(cuid())
+  templateId     String
+  template       TaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title          String
+  order          Int          @default(0)
+  dueBasis       String       @default("TASK_CREATED") // HIRE_DATE | RESIGN_DATE | TASK_CREATED
+  dueOffsetDays  Int          @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// タスク(入退社/給与/助成金 共通)
+model Task {
+  id          String    @id @default(cuid())
+  category    String // HR | PAYROLL | GRANT
+  subType     String // ONBOARDING | OFFBOARDING | MONTHLY | YEAREND | BONUS | 助成金種類名
+  title       String
+  description String?
+  status      String    @default("NOT_STARTED") // NOT_STARTED | IN_PROGRESS | PENDING_REVIEW | DONE
+  dueDate     DateTime?
+  completedAt DateTime? // ステータスがDONEになった日時(月間処理数の集計に使用)
+  baseDate      DateTime? // テンプレートから自動生成された際の起算日。編集するとオフセット付きチェックリストの期限を再計算する
+  baseDateLabel String?   // 起算日が何を表すかの説明(入社日/退社日、またはテンプレートのbaseDateLabelを複製)
+
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assigneeId String?
+  assignee   StaffUser? @relation("assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  grantType String? // 助成金の種類 (助成金タスクのみ)
+  periodKey String? // 給与月次タスクの対象年月 "2026-08" 等。重複生成防止に使用
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  checklist   ChecklistItem[]
+  notes       Note[]
+  attachments Attachment[]
+
+  @@index([dueDate])
+  @@index([clientId])
+  @@index([category])
+}
+
+model ChecklistItem {
+  id            String    @id @default(cuid())
+  taskId        String
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title         String
+  done          Boolean   @default(false)
+  order         Int       @default(0)
+  dueDate       DateTime?
+  dueOffsetDays Int? // タスクのbaseDateからのオフセット日数。テンプレート由来の項目のみ設定され、起算日変更時の期限再計算に使う。手動追加した項目はnull。
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Note {
+  id       String     @id @default(cuid())
+  taskId   String
+  task     Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId String?
+  author   StaffUser? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body     String
+
+  createdAt DateTime @default(now())
+}
+
+// タスクに紐づく関連リンク(Googleドライブ等の外部URL)。ファイル本体はアプリ側に保存しない。
+model Attachment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label     String? // リンクの表示名(未入力時はURLをそのまま表示)
+  url       String
+  createdAt DateTime @default(now())
+}
