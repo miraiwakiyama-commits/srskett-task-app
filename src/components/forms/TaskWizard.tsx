@@ -22,9 +22,9 @@ type HrSubType = "ONBOARDING" | "OFFBOARDING";
 type PayrollSubType = "MONTHLY" | "YEAREND" | "BONUS" | "OTHER";
 
 const HR_STEPS = ["subType", "client", "name", "date", "assignee", "confirm"] as const;
-const PAYROLL_STEPS = ["subType", "client", "title", "date", "assignee", "confirm"] as const;
-const GRANT_STEPS = ["client", "template", "title", "startDate", "assignee", "confirm"] as const;
-const CUSTOM_STEPS = ["client", "template", "title", "date", "assignee", "confirm"] as const;
+const PAYROLL_STEPS = ["subType", "client", "target", "title", "date", "assignee", "confirm"] as const;
+const GRANT_STEPS = ["client", "target", "template", "title", "startDate", "assignee", "confirm"] as const;
+const CUSTOM_STEPS = ["client", "target", "template", "title", "date", "assignee", "confirm"] as const;
 
 export default function TaskWizard({
   clients,
@@ -94,34 +94,41 @@ export default function TaskWizard({
       })) ||
     hrDefaultTitle;
 
-  const payrollDefaultTitle = `${clientName} ${PAYROLL_SUBTYPE_LABELS[payrollSubType]}`;
+  const targetPrefix = targetName.trim() ? ` ${targetName.trim()} 様` : "";
+
+  const payrollDefaultTitle = `${clientName}${targetPrefix} ${PAYROLL_SUBTYPE_LABELS[payrollSubType]}`;
   const payrollComputedTitle =
     (payrollTemplate?.titleTemplate &&
       renderTitleTemplate(payrollTemplate.titleTemplate, {
         client: clientName,
+        target: targetName.trim() || undefined,
         date: startDate,
         subType: payrollTemplate.subType,
         templateName: payrollTemplate.name,
       })) ||
     payrollDefaultTitle;
 
-  const grantDefaultTitle = `${clientName} ${selectedTemplateName}申請`;
+  const grantDefaultTitle = `${clientName}${targetPrefix} ${selectedTemplateName}申請`;
   const grantComputedTitle =
     (selectedTemplate?.titleTemplate &&
       renderTitleTemplate(selectedTemplate.titleTemplate, {
         client: clientName,
+        target: targetName.trim() || undefined,
         date: startDate,
         subType: selectedTemplate.subType,
         templateName: selectedTemplate.name,
       })) ||
     grantDefaultTitle;
 
-  const customDefaultTitle = templateId ? `${clientName} ${selectedTemplateName}` : `${clientName} ${category ?? ""}`;
+  const customDefaultTitle = templateId
+    ? `${clientName}${targetPrefix} ${selectedTemplateName}`
+    : `${clientName}${targetPrefix} ${category ?? ""}`;
   const customComputedTitle =
     (templateId &&
       selectedTemplate?.titleTemplate &&
       renderTitleTemplate(selectedTemplate.titleTemplate, {
         client: clientName,
+        target: targetName.trim() || undefined,
         date: startDate,
         subType: selectedTemplate.subType,
         templateName: selectedTemplate.name,
@@ -148,6 +155,7 @@ export default function TaskWizard({
     setTitle("");
     setDueDate("");
     setStartDate("");
+    setTargetName("");
   }
 
   function selectCategory(value: string) {
@@ -157,6 +165,7 @@ export default function TaskWizard({
     setTitle("");
     setDueDate("");
     setStartDate("");
+    setTargetName("");
   }
 
   function goNext() {
@@ -206,6 +215,7 @@ export default function TaskWizard({
         fd.set("clientId", clientId);
         fd.set("templateId", payrollTemplate.id);
         if (title) fd.set("title", title);
+        if (targetName.trim()) fd.set("targetName", targetName.trim());
         if (startDate) fd.set("startDate", startDate);
         if (assigneeId) fd.set("assigneeId", assigneeId);
         await createCustomCategoryTask(fd);
@@ -224,6 +234,7 @@ export default function TaskWizard({
         fd.set("clientId", clientId);
         fd.set("grantTemplateId", templateId);
         if (title) fd.set("title", title);
+        if (targetName.trim()) fd.set("targetName", targetName.trim());
         if (startDate) fd.set("startDate", startDate);
         if (assigneeId) fd.set("assigneeId", assigneeId);
         await createGrantTask(fd);
@@ -233,6 +244,7 @@ export default function TaskWizard({
         fd.set("clientId", clientId);
         if (templateId) fd.set("templateId", templateId);
         if (title) fd.set("title", title);
+        if (targetName.trim()) fd.set("targetName", targetName.trim());
         if (templateId) {
           if (startDate) fd.set("startDate", startDate);
         } else if (dueDate) {
@@ -340,6 +352,16 @@ export default function TaskWizard({
               <ClientSelect clients={clients} value={clientId} onChange={setClientId} />
             </div>
           )}
+          {currentKey === "target" && (
+            <TargetNameStep
+              value={targetName}
+              onChange={setTargetName}
+              onSkip={() => {
+                setTargetName("");
+                goNext();
+              }}
+            />
+          )}
           {currentKey === "title" && (
             <div>
               <QuestionTitle>タスクのタイトルを入力してください(任意)</QuestionTitle>
@@ -383,6 +405,7 @@ export default function TaskWizard({
               rows={[
                 ["種別", `給与 / ${PAYROLL_SUBTYPE_LABELS[payrollSubType]}`],
                 ["クライアント", clientName],
+                ["対象者", targetName.trim() ? `${targetName.trim()} 様` : "未設定"],
                 ["タイトル", title || payrollComputedTitle],
                 payrollTemplate
                   ? [payrollTemplate.baseDateLabel, startDate || "本日"]
@@ -401,6 +424,16 @@ export default function TaskWizard({
               <QuestionTitle>対象のクライアントを選択してください</QuestionTitle>
               <ClientSelect clients={clients} value={clientId} onChange={setClientId} />
             </div>
+          )}
+          {currentKey === "target" && (
+            <TargetNameStep
+              value={targetName}
+              onChange={setTargetName}
+              onSkip={() => {
+                setTargetName("");
+                goNext();
+              }}
+            />
           )}
           {currentKey === "template" && (
             <div>
@@ -450,6 +483,7 @@ export default function TaskWizard({
               rows={[
                 ["種別", `助成金 / ${selectedTemplateName}`],
                 ["クライアント", clientName],
+                ["対象者", targetName.trim() ? `${targetName.trim()} 様` : "未設定"],
                 ["タイトル", title || grantComputedTitle],
                 [selectedTemplateBaseDateLabel, startDate || "本日"],
                 ["担当者", staffName],
@@ -466,6 +500,16 @@ export default function TaskWizard({
               <QuestionTitle>対象のクライアントを選択してください</QuestionTitle>
               <ClientSelect clients={clients} value={clientId} onChange={setClientId} />
             </div>
+          )}
+          {currentKey === "target" && (
+            <TargetNameStep
+              value={targetName}
+              onChange={setTargetName}
+              onSkip={() => {
+                setTargetName("");
+                goNext();
+              }}
+            />
           )}
           {currentKey === "template" && (
             <div>
@@ -517,6 +561,7 @@ export default function TaskWizard({
               rows={[
                 ["種別", templateId ? `${category} / ${selectedTemplateName}` : category],
                 ["クライアント", clientName],
+                ["対象者", targetName.trim() ? `${targetName.trim()} 様` : "未設定"],
                 ["タイトル", title || customComputedTitle],
                 templateId ? [selectedTemplateBaseDateLabel, startDate || "本日"] : ["期限", dueDate || "未設定"],
                 ["担当者", staffName],
@@ -617,6 +662,33 @@ function ChoiceTile({
     >
       {label}
     </button>
+  );
+}
+
+function TargetNameStep({
+  value,
+  onChange,
+  onSkip,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSkip: () => void;
+}) {
+  return (
+    <div>
+      <QuestionTitle>対象者を入力してください(任意)</QuestionTitle>
+      <p className="mt-1 text-sm text-slate-500">
+        個人が対象のタスクであれば、氏名を入力するとタスク名に反映されます。対象者がいない場合は入力せずに進んでください。
+      </p>
+      <TextField value={value} onChange={onChange} placeholder="例: 山田 太郎" autoFocus />
+      <button
+        type="button"
+        onClick={onSkip}
+        className="mt-3 text-xs text-slate-400 hover:text-slate-600 hover:underline"
+      >
+        対象者を入力せずに進む
+      </button>
+    </div>
   );
 }
 

@@ -266,6 +266,7 @@ export async function createCustomCategoryTask(formData: FormData) {
     clientId,
     templateId: str(formData, "templateId"),
     title: str(formData, "title"),
+    targetName: str(formData, "targetName"),
     assigneeId: str(formData, "assigneeId"),
     startDate: dateOrNull(formData, "startDate") ?? undefined,
     dueDate: dateOrNull(formData, "dueDate") ?? undefined,
@@ -285,6 +286,7 @@ export async function createGrantTask(formData: FormData) {
     clientId,
     grantTemplateId,
     title: str(formData, "title"),
+    targetName: str(formData, "targetName"),
     assigneeId: str(formData, "assigneeId"),
     startDate: dateOrNull(formData, "startDate") ?? undefined,
   });

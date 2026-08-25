@@ -85,6 +85,7 @@ export async function generateGrantTask(params: {
   clientId: string;
   grantTemplateId: string;
   title?: string;
+  targetName?: string;
   assigneeId?: string;
   startDate?: Date;
 }) {
@@ -96,12 +97,13 @@ export async function generateGrantTask(params: {
   const startDate = params.startDate ?? new Date();
   const client = await prisma.client.findUniqueOrThrow({ where: { id: params.clientId } });
 
-  const defaultTitle = `${client.name} ${template.subType}申請`;
+  const defaultTitle = `${client.name}${params.targetName ? ` ${params.targetName} 様` : ""} ${template.subType}申請`;
   const title =
     params.title ||
     (template.titleTemplate
       ? renderTitleTemplate(template.titleTemplate, {
           client: client.name,
+          target: params.targetName,
           date: fmt(startDate),
           subType: template.subType,
           templateName: template.name,
@@ -146,6 +148,7 @@ export async function generateCustomCategoryTask(params: {
   clientId: string;
   templateId?: string;
   title?: string;
+  targetName?: string;
   assigneeId?: string;
   startDate?: Date; // テンプレート使用時の起算日
   dueDate?: Date; // テンプレート未使用時の期限
@@ -158,12 +161,13 @@ export async function generateCustomCategoryTask(params: {
       include: { items: { orderBy: { order: "asc" } } },
     });
     const startDate = params.startDate ?? new Date();
-    const defaultTitle = `${client.name} ${template.name}`;
+    const defaultTitle = `${client.name}${params.targetName ? ` ${params.targetName} 様` : ""} ${template.name}`;
     const title =
       params.title ||
       (template.titleTemplate
         ? renderTitleTemplate(template.titleTemplate, {
             client: client.name,
+            target: params.targetName,
             date: fmt(startDate),
             subType: template.subType,
             templateName: template.name,
@@ -197,11 +201,12 @@ export async function generateCustomCategoryTask(params: {
     return task;
   }
 
+  const defaultTitle = `${client.name}${params.targetName ? ` ${params.targetName} 様` : ""} ${params.category}`;
   return prisma.task.create({
     data: {
       category: params.category,
       subType: "OTHER",
-      title: params.title || `${client.name} ${params.category}`,
+      title: params.title || defaultTitle,
       clientId: params.clientId,
       assigneeId: params.assigneeId,
       dueDate: params.dueDate,

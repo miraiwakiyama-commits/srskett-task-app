@@ -102,3 +102,12 @@ export async function deleteTemplateItem(templateId: string, itemId: string) {
   await prisma.templateItem.delete({ where: { id: itemId } });
   revalidatePath(`/templates/${templateId}`);
 }
+
+export async function reorderTemplateItems(templateId: string, orderedItemIds: string[]) {
+  await prisma.$transaction(
+    orderedItemIds.map((itemId, index) =>
+      prisma.templateItem.update({ where: { id: itemId }, data: { order: index + 1 } })
+    )
+  );
+  revalidatePath(`/templates/${templateId}`);
+}

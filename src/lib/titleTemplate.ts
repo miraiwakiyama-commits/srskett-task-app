@@ -4,7 +4,7 @@
 
 export type TitleTemplateVars = {
   client?: string;
-  target?: string; // 対象者名(入退社のみ)
+  target?: string; // 対象者名(入力された場合のみ)
   date?: string; // 起算日(入社日/退社日、または起算日)
   subType?: string; // サブ種別のラベル(入社/退社、助成金名など)
   templateName?: string; // テンプレート自体の名称
@@ -23,9 +23,9 @@ export function renderTitleTemplate(pattern: string, vars: TitleTemplateVars): s
 export const TITLE_TEMPLATE_PLACEHOLDERS: Record<string, string> = {
   HR: "{client}=クライアント名 / {target}=対象者名 / {date}=入社日・退社日 / {subType}=入社・退社",
   PAYROLL:
-    "{client}=クライアント名 / {date}=起算日 / {subType}=サブ種別 / {templateName}=テンプレート名 / {year}・{month}=対象年月(月次給与のみ)",
-  GRANT: "{client}=クライアント名 / {date}=起算日 / {subType}=助成金名 / {templateName}=テンプレート名",
-  DEFAULT: "{client}=クライアント名 / {date}=起算日 / {subType}=サブ種別 / {templateName}=テンプレート名",
+    "{client}=クライアント名 / {target}=対象者名(入力時のみ) / {date}=起算日 / {subType}=サブ種別 / {templateName}=テンプレート名 / {year}・{month}=対象年月(月次給与のみ)",
+  GRANT: "{client}=クライアント名 / {target}=対象者名(入力時のみ) / {date}=起算日 / {subType}=助成金名 / {templateName}=テンプレート名",
+  DEFAULT: "{client}=クライアント名 / {target}=対象者名(入力時のみ) / {date}=起算日 / {subType}=サブ種別 / {templateName}=テンプレート名",
 };
 
 export function titleTemplatePlaceholderHelp(category: string): string {

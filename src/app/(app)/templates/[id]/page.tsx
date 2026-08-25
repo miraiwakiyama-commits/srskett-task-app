@@ -2,14 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { categoryLabel, subTypeLabel, DUE_BASIS_LABELS } from "@/lib/constants";
 import { titleTemplatePlaceholderHelp } from "@/lib/titleTemplate";
-import {
-  updateTemplate,
-  toggleTemplateActive,
-  deleteTemplate,
-  addTemplateItem,
-  updateTemplateItem,
-  deleteTemplateItem,
-} from "@/lib/actions/templates";
+import TemplateItemList from "@/components/TemplateItemList";
+import { updateTemplate, toggleTemplateActive, deleteTemplate, addTemplateItem } from "@/lib/actions/templates";
 
 export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -104,66 +98,8 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
             ? "入社日/退社日からのオフセット日数で提出期限が自動算出されます。"
             : `起算日(${template.baseDateLabel})からのオフセット日数で提出期限が自動算出されます。`}
         </p>
-        <div className="mt-3 space-y-2">
-          {template.items.map((item) => {
-            const itemAction = updateTemplateItem.bind(null, template.id, item.id);
-            const deleteItemAction = deleteTemplateItem.bind(null, template.id, item.id);
-            return (
-              <form
-                key={item.id}
-                action={itemAction}
-                className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3"
-              >
-                <div className="min-w-[10rem] flex-1">
-                  <label className="block text-xs text-slate-500">項目名</label>
-                  <input
-                    name="title"
-                    defaultValue={item.title}
-                    required
-                    className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                {template.category === "HR" && (
-                  <div>
-                    <label className="block text-xs text-slate-500">起算日基準</label>
-                    <select
-                      name="dueBasis"
-                      defaultValue={item.dueBasis}
-                      className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    >
-                      <option value="HIRE_DATE">{DUE_BASIS_LABELS.HIRE_DATE}</option>
-                      <option value="RESIGN_DATE">{DUE_BASIS_LABELS.RESIGN_DATE}</option>
-                    </select>
-                  </div>
-                )}
-                {template.category !== "HR" && <input type="hidden" name="dueBasis" value="TASK_CREATED" />}
-                <div>
-                  <label className="block text-xs text-slate-500">オフセット日数</label>
-                  <input
-                    type="number"
-                    name="dueOffsetDays"
-                    defaultValue={item.dueOffsetDays}
-                    className="mt-1 w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                <button type="submit" className="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
-                  保存
-                </button>
-                <button
-                  type="submit"
-                  formAction={deleteItemAction}
-                  className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-                >
-                  削除
-                </button>
-              </form>
-            );
-          })}
-          {template.items.length === 0 && (
-            <p className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-400">
-              チェックリスト項目がありません
-            </p>
-          )}
+        <div className="mt-3">
+          <TemplateItemList templateId={template.id} items={template.items} isHr={template.category === "HR"} />
         </div>
 
         <form action={addItemAction} className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3">
