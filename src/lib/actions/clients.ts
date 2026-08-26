@@ -87,13 +87,23 @@ export async function toggleClientArchived(clientId: string, archived: boolean) 
 
 const CSV_HAS_PAYROLL_TRUE_VALUES = new Set(["あり", "true", "TRUE", "1", "○"]);
 
+// ExcelでCSV保存すると(特に日本語版Windowsの既定の「CSV(コンマ区切り)」形式では)
+// UTF-8ではなくShift-JISで出力されることが多いため、UTF-8として不正な場合はShift-JISとして読み直す。
+function decodeCsvBuffer(buffer: ArrayBuffer): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    return new TextDecoder("shift_jis").decode(buffer);
+  }
+}
+
 export async function importClientsFromCsv(formData: FormData) {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     throw new Error("CSVファイルを選択してください");
   }
 
-  const text = await file.text();
+  const text = decodeCsvBuffer(await file.arrayBuffer());
   const rows = parseCsv(text);
   if (rows.length === 0) throw new Error("CSVにデータがありません");
 
@@ -140,22 +150,27 @@ export async function importClientsFromCsv(formData: FormData) {
     const hasPayrollRaw = get(row, hasPayrollIdx);
     const hasPayroll = hasPayrollRaw === undefined ? true : CSV_HAS_PAYROLL_TRUE_VALUES.has(hasPayrollRaw);
 
-    await prisma.client.create({
-      data: {
-        name,
-        clientNumber: get(row, clientNumberIdx) ?? null,
-        contactName: get(row, contactNameIdx) ?? null,
-        contactEmail: get(row, contactEmailIdx) ?? null,
-        contactPhone: get(row, contactPhoneIdx) ?? null,
-        plan: get(row, planIdx) ?? null,
-        notes: get(row, notesIdx) ?? null,
-        hasPayroll,
-        payrollClosingDay: toInt(get(row, closingDayIdx)),
-        payrollPayDay: toInt(get(row, payDayIdx)),
-        payrollPayMonthOffset: toInt(get(row, payOffsetIdx)) ?? 1,
-      },
-    });
-    created++;
+    try {
+      await prisma.client.create({
+        data: {
+          name,
+          clientNumber: get(row, clientNumberIdx) ?? null,
+          contactName: get(row, contactNameIdx) ?? null,
+          contactEmail: get(row, contactEmailIdx) ?? null,
+          contactPhone: get(row, contactPhoneIdx) ?? null,
+          plan: get(row, planIdx) ?? null,
+          notes: get(row, notesIdx) ?? null,
+          hasPayroll,
+          payrollClosingDay: toInt(get(row, closingDayIdx)),
+          payrollPayDay: toInt(get(row, payDayIdx)),
+          payrollPayMonthOffset: toInt(get(row, payOffsetIdx)) ?? 1,
+        },
+      });
+      created++;
+    } catch {
+      // 1行のデータ不備(型不正など)で取り込み全体を失敗させないよう、その行だけスキップする
+      skipped++;
+    }
   }
 
   revalidatePath("/clients");
