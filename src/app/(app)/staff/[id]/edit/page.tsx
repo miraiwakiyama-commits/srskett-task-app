@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import StaffForm from "@/components/forms/StaffForm";
+import DeleteButton from "@/components/DeleteButton";
 import { updateStaff, deleteStaff } from "@/lib/actions/staff";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -32,14 +33,14 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
         />
       </div>
       {!isSelf && (
-        <form action={removeAction} className="mt-4">
-          <button
-            type="submit"
+        <div className="mt-4">
+          <DeleteButton
+            action={removeAction}
+            confirmMessage={`${staffMember.name} さんを削除します。元に戻せません。本当に削除しますか?`}
+            label="このスタッフを削除"
             className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-          >
-            このスタッフを削除
-          </button>
-        </form>
+          />
+        </div>
       )}
     </div>
   );

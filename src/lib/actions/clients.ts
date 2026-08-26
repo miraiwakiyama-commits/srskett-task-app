@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { parseCsv } from "@/lib/csv";
 
 function str(formData: FormData, key: string): string | undefined {
   const v = formData.get(key);
@@ -73,4 +74,79 @@ export async function deleteClient(clientId: string) {
   await prisma.client.delete({ where: { id: clientId } });
   revalidatePath("/clients");
   redirect("/clients");
+}
+
+const CSV_HAS_PAYROLL_TRUE_VALUES = new Set(["あり", "true", "TRUE", "1", "○"]);
+
+export async function importClientsFromCsv(formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("CSVファイルを選択してください");
+  }
+
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if (rows.length === 0) throw new Error("CSVにデータがありません");
+
+  const [header, ...dataRows] = rows;
+  const colIndex = (name: string) => header.findIndex((h) => h.trim() === name);
+
+  const nameIdx = colIndex("企業名");
+  if (nameIdx === -1) throw new Error("見出し行に「企業名」列が見つかりません");
+
+  const contactNameIdx = colIndex("担当者名");
+  const contactEmailIdx = colIndex("担当者メール");
+  const contactPhoneIdx = colIndex("担当者電話");
+  const planIdx = colIndex("プラン");
+  const notesIdx = colIndex("メモ");
+  const hasPayrollIdx = colIndex("給与計算あり");
+  const closingDayIdx = colIndex("締め日");
+  const payDayIdx = colIndex("支払日");
+  const payOffsetIdx = colIndex("支払月オフセット");
+
+  const get = (row: string[], idx: number): string | undefined => {
+    if (idx < 0) return undefined;
+    const v = row[idx]?.trim();
+    return v ? v : undefined;
+  };
+  const toInt = (v: string | undefined): number | null => {
+    if (!v) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const row of dataRows) {
+    if (row.every((cell) => cell.trim() === "")) continue;
+
+    const name = get(row, nameIdx);
+    if (!name) {
+      skipped++;
+      continue;
+    }
+
+    const hasPayrollRaw = get(row, hasPayrollIdx);
+    const hasPayroll = hasPayrollRaw === undefined ? true : CSV_HAS_PAYROLL_TRUE_VALUES.has(hasPayrollRaw);
+
+    await prisma.client.create({
+      data: {
+        name,
+        contactName: get(row, contactNameIdx) ?? null,
+        contactEmail: get(row, contactEmailIdx) ?? null,
+        contactPhone: get(row, contactPhoneIdx) ?? null,
+        plan: get(row, planIdx) ?? null,
+        notes: get(row, notesIdx) ?? null,
+        hasPayroll,
+        payrollClosingDay: toInt(get(row, closingDayIdx)),
+        payrollPayDay: toInt(get(row, payDayIdx)),
+        payrollPayMonthOffset: toInt(get(row, payOffsetIdx)) ?? 1,
+      },
+    });
+    created++;
+  }
+
+  revalidatePath("/clients");
+  return { created, skipped };
 }

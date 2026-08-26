@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import ClientCsvImportForm from "@/components/ClientCsvImportForm";
 
 export default async function ClientsPage() {
   const clients = await prisma.client.findMany({
@@ -19,6 +20,10 @@ export default async function ClientsPage() {
         >
           + 新規クライアント
         </Link>
+      </div>
+
+      <div className="mt-6">
+        <ClientCsvImportForm />
       </div>
 
       <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">

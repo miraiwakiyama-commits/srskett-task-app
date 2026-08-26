@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { categoryLabel, subTypeLabel, DUE_BASIS_LABELS } from "@/lib/constants";
 import { titleTemplatePlaceholderHelp } from "@/lib/titleTemplate";
 import TemplateItemList from "@/components/TemplateItemList";
+import DeleteButton from "@/components/DeleteButton";
 import { updateTemplate, toggleTemplateActive, deleteTemplate, addTemplateItem } from "@/lib/actions/templates";
 
 export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -141,11 +142,14 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
         </form>
       </section>
 
-      <form action={deleteTemplateAction} className="mt-8">
-        <button type="submit" className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
-          このテンプレートを削除
-        </button>
-      </form>
+      <div className="mt-8">
+        <DeleteButton
+          action={deleteTemplateAction}
+          confirmMessage="このテンプレートを削除します。登録されているチェックリスト項目もすべて削除され、元に戻せません。本当に削除しますか?"
+          label="このテンプレートを削除"
+          className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+        />
+      </div>
     </div>
   );
 }

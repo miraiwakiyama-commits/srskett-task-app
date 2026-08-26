@@ -8,6 +8,7 @@ import ChecklistItemRow from "@/components/ChecklistItemRow";
 import ChecklistProgress from "@/components/ChecklistProgress";
 import BaseDateForm from "@/components/BaseDateForm";
 import { MascotBubble, randomCheerMessage } from "@/components/Mascot";
+import DeleteButton from "@/components/DeleteButton";
 import { buildCategoryColorMap, categoryColor } from "@/lib/categoryColors";
 import {
   addChecklistItem,
@@ -206,11 +207,14 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         </div>
       </section>
 
-      <form action={deleteTaskAction} className="mt-8">
-        <button type="submit" className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
-          このタスクを削除
-        </button>
-      </form>
+      <div className="mt-8">
+        <DeleteButton
+          action={deleteTaskAction}
+          confirmMessage="このタスクを削除します。チェックリストやメモもすべて削除され、元に戻せません。本当に削除しますか?"
+          label="このタスクを削除"
+          className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+        />
+      </div>
     </div>
   );
 }
