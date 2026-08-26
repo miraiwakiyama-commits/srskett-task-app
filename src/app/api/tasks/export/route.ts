@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   );
 
   const csv = [header.join(","), ...rows].join("\r\n");
-  const body = "﻿" + csv; // Excelでの文字化け防止のためBOMを付与
+  const body = String.fromCharCode(0xfeff) + csv; // Excelでの文字化け防止のためBOMを付与
 
   return new Response(body, {
     headers: {

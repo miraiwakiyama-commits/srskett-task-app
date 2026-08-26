@@ -85,7 +85,7 @@ export async function toggleClientArchived(clientId: string, archived: boolean) 
   revalidatePath("/tasks/new");
 }
 
-const CSV_HAS_PAYROLL_TRUE_VALUES = new Set(["あり", "true", "TRUE", "1", "○"]);
+const CSV_TRUE_VALUES = new Set(["あり", "true", "TRUE", "1", "○"]);
 
 // ExcelでCSV保存すると(特に日本語版Windowsの既定の「CSV(コンマ区切り)」形式では)
 // UTF-8ではなくShift-JISで出力されることが多いため、UTF-8として不正な場合はShift-JISとして読み直す。
@@ -113,6 +113,7 @@ export async function importClientsFromCsv(formData: FormData) {
   const nameIdx = colIndex("企業名");
   if (nameIdx === -1) throw new Error("見出し行に「企業名」列が見つかりません");
 
+  const idIdx = colIndex("ID");
   const clientNumberIdx = colIndex("番号");
   const contactNameIdx = colIndex("担当者名");
   const contactEmailIdx = colIndex("担当者メール");
@@ -123,6 +124,7 @@ export async function importClientsFromCsv(formData: FormData) {
   const closingDayIdx = colIndex("締め日");
   const payDayIdx = colIndex("支払日");
   const payOffsetIdx = colIndex("支払月オフセット");
+  const archivedIdx = colIndex("アーカイブ");
 
   const get = (row: string[], idx: number): string | undefined => {
     if (idx < 0) return undefined;
@@ -136,6 +138,7 @@ export async function importClientsFromCsv(formData: FormData) {
   };
 
   let created = 0;
+  let updated = 0;
   let skipped = 0;
 
   for (const row of dataRows) {
@@ -148,31 +151,42 @@ export async function importClientsFromCsv(formData: FormData) {
     }
 
     const hasPayrollRaw = get(row, hasPayrollIdx);
-    const hasPayroll = hasPayrollRaw === undefined ? true : CSV_HAS_PAYROLL_TRUE_VALUES.has(hasPayrollRaw);
+    const hasPayroll = hasPayrollRaw === undefined ? true : CSV_TRUE_VALUES.has(hasPayrollRaw);
+    const archivedRaw = get(row, archivedIdx);
+    const archived = archivedRaw === undefined ? false : CSV_TRUE_VALUES.has(archivedRaw);
+
+    const data = {
+      name,
+      clientNumber: get(row, clientNumberIdx) ?? null,
+      contactName: get(row, contactNameIdx) ?? null,
+      contactEmail: get(row, contactEmailIdx) ?? null,
+      contactPhone: get(row, contactPhoneIdx) ?? null,
+      plan: get(row, planIdx) ?? null,
+      notes: get(row, notesIdx) ?? null,
+      hasPayroll,
+      payrollClosingDay: toInt(get(row, closingDayIdx)),
+      payrollPayDay: toInt(get(row, payDayIdx)),
+      payrollPayMonthOffset: toInt(get(row, payOffsetIdx)) ?? 1,
+      archived,
+    };
+
+    const id = get(row, idIdx);
 
     try {
-      await prisma.client.create({
-        data: {
-          name,
-          clientNumber: get(row, clientNumberIdx) ?? null,
-          contactName: get(row, contactNameIdx) ?? null,
-          contactEmail: get(row, contactEmailIdx) ?? null,
-          contactPhone: get(row, contactPhoneIdx) ?? null,
-          plan: get(row, planIdx) ?? null,
-          notes: get(row, notesIdx) ?? null,
-          hasPayroll,
-          payrollClosingDay: toInt(get(row, closingDayIdx)),
-          payrollPayDay: toInt(get(row, payDayIdx)),
-          payrollPayMonthOffset: toInt(get(row, payOffsetIdx)) ?? 1,
-        },
-      });
-      created++;
+      if (id) {
+        // ID列が一致する既存クライアントを更新する(エクスポート→編集→再取り込みでの一括編集用)
+        await prisma.client.update({ where: { id }, data });
+        updated++;
+      } else {
+        await prisma.client.create({ data });
+        created++;
+      }
     } catch {
-      // 1行のデータ不備(型不正など)で取り込み全体を失敗させないよう、その行だけスキップする
+      // 1行のデータ不備(型不正・存在しないIDなど)で取り込み全体を失敗させないよう、その行だけスキップする
       skipped++;
     }
   }
 
   revalidatePath("/clients");
-  return { created, skipped };
+  return { created, updated, skipped };
 }
