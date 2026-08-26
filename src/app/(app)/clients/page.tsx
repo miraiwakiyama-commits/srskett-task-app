@@ -30,6 +30,7 @@ export default async function ClientsPage() {
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
+              <th className="hidden px-4 py-2 text-left font-semibold text-slate-600 sm:table-cell">番号</th>
               <th className="px-4 py-2 text-left font-semibold text-slate-600">企業名</th>
               <th className="hidden px-4 py-2 text-left font-semibold text-slate-600 sm:table-cell">担当者</th>
               <th className="hidden px-4 py-2 text-left font-semibold text-slate-600 md:table-cell">契約プラン</th>
@@ -40,6 +41,7 @@ export default async function ClientsPage() {
           <tbody className="divide-y divide-slate-100">
             {clients.map((c) => (
               <tr key={c.id} className="hover:bg-slate-50">
+                <td className="hidden px-4 py-3 text-slate-500 sm:table-cell">{c.clientNumber ?? "-"}</td>
                 <td className="px-4 py-3">
                   <Link href={`/clients/${c.id}`} className="font-medium text-indigo-700 hover:underline">
                     {c.name}
@@ -76,7 +78,7 @@ export default async function ClientsPage() {
             ))}
             {clients.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                   クライアントが登録されていません
                 </td>
               </tr>

@@ -35,7 +35,7 @@ export default function ClientCsvImportForm() {
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <h3 className="text-sm font-semibold text-slate-900">顧問先をCSVから一括登録</h3>
       <p className="mt-1 text-xs text-slate-500">
-        1行目は見出し行にしてください。認識する列: 企業名(必須)・担当者名・担当者メール・担当者電話・プラン・メモ・給与計算あり・締め日・支払日・支払月オフセット
+        1行目は見出し行にしてください。認識する列: 番号・企業名(必須)・担当者名・担当者メール・担当者電話・プラン・メモ・給与計算あり・締め日・支払日・支払月オフセット
       </p>
       <form ref={formRef} onSubmit={handleSubmit} className="mt-3 flex flex-wrap items-center gap-2">
         <input type="file" name="file" accept=".csv,text/csv" required className="text-sm" />

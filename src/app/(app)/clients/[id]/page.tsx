@@ -29,6 +29,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
+            {client.clientNumber && (
+              <span className="text-sm font-medium text-slate-400">{client.clientNumber}</span>
+            )}
             <h1 className="text-lg font-bold text-slate-900">{client.name}</h1>
             {client.archived && (
               <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-300">

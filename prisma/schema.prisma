@@ -28,6 +28,7 @@ model StaffUser {
 // 顧問先企業
 model Client {
   id                 String   @id @default(cuid())
+  clientNumber       String? // 顧問先管理番号。事務所側で自由に採番・入力する任意項目
   name               String
   contactName        String?
   contactEmail       String?

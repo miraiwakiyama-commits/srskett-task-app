@@ -18,6 +18,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
           action={action}
           submitLabel="更新する"
           defaultValues={{
+            clientNumber: client.clientNumber ?? "",
             name: client.name,
             contactName: client.contactName ?? "",
             contactEmail: client.contactEmail ?? "",

@@ -29,6 +29,7 @@ export async function createClient(formData: FormData) {
   const client = await prisma.client.create({
     data: {
       name,
+      clientNumber: str(formData, "clientNumber"),
       contactName: str(formData, "contactName"),
       contactEmail: str(formData, "contactEmail"),
       contactPhone: str(formData, "contactPhone"),
@@ -53,6 +54,7 @@ export async function updateClient(clientId: string, formData: FormData) {
     where: { id: clientId },
     data: {
       name,
+      clientNumber: str(formData, "clientNumber") ?? null,
       contactName: str(formData, "contactName") ?? null,
       contactEmail: str(formData, "contactEmail") ?? null,
       contactPhone: str(formData, "contactPhone") ?? null,
@@ -101,6 +103,7 @@ export async function importClientsFromCsv(formData: FormData) {
   const nameIdx = colIndex("企業名");
   if (nameIdx === -1) throw new Error("見出し行に「企業名」列が見つかりません");
 
+  const clientNumberIdx = colIndex("番号");
   const contactNameIdx = colIndex("担当者名");
   const contactEmailIdx = colIndex("担当者メール");
   const contactPhoneIdx = colIndex("担当者電話");
@@ -140,6 +143,7 @@ export async function importClientsFromCsv(formData: FormData) {
     await prisma.client.create({
       data: {
         name,
+        clientNumber: get(row, clientNumberIdx) ?? null,
         contactName: get(row, contactNameIdx) ?? null,
         contactEmail: get(row, contactEmailIdx) ?? null,
         contactPhone: get(row, contactPhoneIdx) ?? null,
