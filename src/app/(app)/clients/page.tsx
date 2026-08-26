@@ -4,7 +4,7 @@ import ClientCsvImportForm from "@/components/ClientCsvImportForm";
 
 export default async function ClientsPage() {
   const clients = await prisma.client.findMany({
-    orderBy: { name: "asc" },
+    orderBy: [{ clientNumber: "asc" }, { name: "asc" }],
     include: {
       tasks: { where: { status: { not: "DONE" } }, select: { id: true } },
     },
