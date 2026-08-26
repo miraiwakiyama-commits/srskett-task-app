@@ -8,7 +8,11 @@ export default async function NewTaskPage({
 }) {
   const sp = await searchParams;
   const [clients, staff, templates, customCategories] = await Promise.all([
-    prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.client.findMany({
+      where: { archived: false },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
     prisma.staffUser.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.taskTemplate.findMany({
       where: { isActive: true },

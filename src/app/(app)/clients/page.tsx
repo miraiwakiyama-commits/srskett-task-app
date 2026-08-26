@@ -44,6 +44,11 @@ export default async function ClientsPage() {
                   <Link href={`/clients/${c.id}`} className="font-medium text-indigo-700 hover:underline">
                     {c.name}
                   </Link>
+                  {c.archived && (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-300">
+                      アーカイブ済み
+                    </span>
+                  )}
                 </td>
                 <td className="hidden px-4 py-3 text-slate-600 sm:table-cell">{c.contactName ?? "-"}</td>
                 <td className="hidden px-4 py-3 text-slate-600 md:table-cell">{c.plan ?? "-"}</td>

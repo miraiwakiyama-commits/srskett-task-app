@@ -76,6 +76,13 @@ export async function deleteClient(clientId: string) {
   redirect("/clients");
 }
 
+export async function toggleClientArchived(clientId: string, archived: boolean) {
+  await prisma.client.update({ where: { id: clientId }, data: { archived } });
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${clientId}`);
+  revalidatePath("/tasks/new");
+}
+
 const CSV_HAS_PAYROLL_TRUE_VALUES = new Set(["あり", "true", "TRUE", "1", "○"]);
 
 export async function importClientsFromCsv(formData: FormData) {

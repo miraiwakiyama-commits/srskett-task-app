@@ -38,6 +38,7 @@ model Client {
   payrollClosingDay  Int? // 給与締め日 (1-31, 31=末日として扱う)
   payrollPayDay      Int? // 給与支払日 (1-31)
   payrollPayMonthOffset Int @default(1) // 支払月オフセット(0=当月払い,1=翌月払い)
+  archived           Boolean  @default(false) // 顧問契約終了後もデータとして残すためのアーカイブフラグ。trueの場合、新規タスク作成時の選択肢や月次給与一括生成の対象から除外する
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

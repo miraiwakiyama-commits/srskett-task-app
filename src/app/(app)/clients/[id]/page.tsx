@@ -5,6 +5,8 @@ import { categorySubtitle } from "@/lib/constants";
 import StatusBadge from "@/components/StatusBadge";
 import DueBadge from "@/components/DueBadge";
 import ChecklistProgress from "@/components/ChecklistProgress";
+import DeleteButton from "@/components/DeleteButton";
+import { deleteClient, toggleClientArchived } from "@/lib/actions/clients";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,19 +21,45 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   });
   if (!client) notFound();
 
+  const toggleArchivedAction = toggleClientArchived.bind(null, client.id, !client.archived);
+  const deleteClientAction = deleteClient.bind(null, client.id);
+
   return (
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-bold text-slate-900">{client.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-slate-900">{client.name}</h1>
+            {client.archived && (
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-300">
+                アーカイブ済み
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-slate-500">{client.plan ?? "契約プラン未設定"}</p>
         </div>
-        <Link
-          href={`/clients/${client.id}/edit`}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          編集
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/clients/${client.id}/edit`}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            編集
+          </Link>
+          <form action={toggleArchivedAction}>
+            <button
+              type="submit"
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {client.archived ? "アーカイブを解除" : "アーカイブする"}
+            </button>
+          </form>
+          <DeleteButton
+            action={deleteClientAction}
+            confirmMessage="この顧問先を削除します。関連するタスクもすべて削除され、元に戻せません。本当に削除しますか?"
+            label="削除"
+            className="rounded-md border border-red-300 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+          />
+        </div>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -71,12 +99,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       <section className="mt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-900">タスク ({client.tasks.length}件)</h2>
-          <Link
-            href={`/tasks/new?clientId=${client.id}`}
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
-          >
-            + タスクを追加
-          </Link>
+          {!client.archived && (
+            <Link
+              href={`/tasks/new?clientId=${client.id}`}
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
+            >
+              + タスクを追加
+            </Link>
+          )}
         </div>
         <div className="mt-3 space-y-2">
           {client.tasks.map((t) => (

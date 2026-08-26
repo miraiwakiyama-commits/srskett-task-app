@@ -223,7 +223,7 @@ export async function generateCustomCategoryTask(params: {
 export async function generateMonthlyPayrollTasks(year: number, month1: number) {
   const periodKey = periodKeyOf(year, month1);
   const clients = await prisma.client.findMany({
-    where: { hasPayroll: true, payrollClosingDay: { not: null }, payrollPayDay: { not: null } },
+    where: { hasPayroll: true, archived: false, payrollClosingDay: { not: null }, payrollPayDay: { not: null } },
   });
 
   const template = await prisma.taskTemplate.findFirst({
