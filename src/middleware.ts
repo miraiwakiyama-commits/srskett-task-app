@@ -6,7 +6,13 @@ const PUBLIC_PATHS = ["/login", "/api/auth/login"];
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (PUBLIC_PATHS.some((p) => pathname === p) || pathname.startsWith("/_next")) {
+  // /api/cron/* はVercel Cronからセッションcookieなしで呼ばれるため除外する。
+  // 認証はセッションではなくCRON_SECRETで各ルート側が行う。
+  if (
+    PUBLIC_PATHS.some((p) => pathname === p) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/cron/")
+  ) {
     return NextResponse.next();
   }
 
