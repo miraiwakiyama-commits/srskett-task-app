@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { buildMonthGrid, fmt, isSameMonth, isToday } from "@/lib/dates";
+import { buildMonthGrid, buildTwoWeekGrid, fmt, isSameMonth, isToday } from "@/lib/dates";
 import { categoryLabel } from "@/lib/constants";
 import { buildCategoryColorMap, categoryColor } from "@/lib/categoryColors";
 
@@ -9,14 +9,24 @@ const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; month?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; view?: string; start?: string }>;
 }) {
   const sp = await searchParams;
   const now = new Date();
+  const view = sp.view === "2weeks" ? "2weeks" : "month";
+
   const year = sp.year ? Number(sp.year) : now.getFullYear();
   const month1 = sp.month ? Number(sp.month) : now.getMonth() + 1;
 
-  const { weeks, monthStart } = buildMonthGrid(year, month1);
+  let weeks: Date[][];
+  let monthStart: Date | null = null;
+
+  if (view === "2weeks") {
+    const start = sp.start ? new Date(sp.start) : now;
+    ({ weeks } = buildTwoWeekGrid(Number.isNaN(start.getTime()) ? now : start));
+  } else {
+    ({ weeks, monthStart } = buildMonthGrid(year, month1));
+  }
   const gridStart = weeks[0][0];
   const gridEnd = weeks[weeks.length - 1][6];
 
@@ -80,30 +90,76 @@ export default async function CalendarPage({
     list.push(e);
     entriesByDay.set(key, list);
   }
+  // 日ごとに、消込(完了)済みのものを後ろに回す(未完了優先、同じ完了状態内は期限順を維持)
+  for (const list of entriesByDay.values()) {
+    list.sort((a, b) => Number(a.done) - Number(b.done));
+  }
 
-  const prev = month1 === 1 ? { year: year - 1, month: 12 } : { year, month: month1 - 1 };
-  const next = month1 === 12 ? { year: year + 1, month: 1 } : { year, month: month1 + 1 };
+  const prevMonth = month1 === 1 ? { year: year - 1, month: 12 } : { year, month: month1 - 1 };
+  const nextMonth = month1 === 12 ? { year: year + 1, month: 1 } : { year, month: month1 + 1 };
+  const prevTwoWeeksStart = fmt(new Date(gridStart.getTime() - 14 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+  const nextTwoWeeksStart = fmt(new Date(gridStart.getTime() + 14 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold text-slate-900">カレンダー</h1>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/calendar?year=${prev.year}&month=${prev.month}`}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            ← 前月
-          </Link>
-          <span className="text-sm font-semibold text-slate-900">
-            {year}年{month1}月
-          </span>
-          <Link
-            href={`/calendar?year=${next.year}&month=${next.month}`}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            次月 →
-          </Link>
+          <div className="flex overflow-hidden rounded-md border border-slate-300 text-sm">
+            <Link
+              href="/calendar?view=month"
+              className={`px-3 py-1.5 ${
+                view === "month" ? "bg-indigo-600 text-white" : "bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              月表示
+            </Link>
+            <Link
+              href="/calendar?view=2weeks"
+              className={`px-3 py-1.5 ${
+                view === "2weeks" ? "bg-indigo-600 text-white" : "bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              2週間表示
+            </Link>
+          </div>
+          {view === "month" ? (
+            <>
+              <Link
+                href={`/calendar?view=month&year=${prevMonth.year}&month=${prevMonth.month}`}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                ← 前月
+              </Link>
+              <span className="text-sm font-semibold text-slate-900">
+                {year}年{month1}月
+              </span>
+              <Link
+                href={`/calendar?view=month&year=${nextMonth.year}&month=${nextMonth.month}`}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                次月 →
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href={`/calendar?view=2weeks&start=${prevTwoWeeksStart}`}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                ← 前の2週間
+              </Link>
+              <span className="text-sm font-semibold text-slate-900">
+                {fmt(gridStart, "yyyy/MM/dd")} 〜 {fmt(gridEnd, "yyyy/MM/dd")}
+              </span>
+              <Link
+                href={`/calendar?view=2weeks&start=${nextTwoWeeksStart}`}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                次の2週間 →
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -141,7 +197,7 @@ export default async function CalendarPage({
             {weeks.flat().map((day) => {
               const key = fmt(day, "yyyy-MM-dd");
               const dayEntries = entriesByDay.get(key) ?? [];
-              const inMonth = isSameMonth(day, monthStart);
+              const inMonth = monthStart ? isSameMonth(day, monthStart) : true;
               const today = isToday(day);
               return (
                 <div

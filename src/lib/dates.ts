@@ -103,4 +103,19 @@ export function buildMonthGrid(year: number, month1: number) {
   return { weeks, monthStart, monthEnd };
 }
 
+/**
+ * 2週間表示カレンダー用に、指定日を含む週から2週間分(日曜始まり)のグリッドを返す。
+ */
+export function buildTwoWeekGrid(startDate: Date) {
+  const gridStart = startOfWeek(startDate);
+  const gridEnd = addDays(gridStart, 13);
+  const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
+
+  const weeks: Date[][] = [];
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push(days.slice(i, i + 7));
+  }
+  return { weeks, gridStart, gridEnd };
+}
+
 export { isBefore, isSameMonth, isSameDay, isToday };
