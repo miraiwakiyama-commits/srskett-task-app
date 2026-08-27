@@ -148,15 +148,29 @@ export async function deleteTask(taskId: string) {
 export async function addChecklistItem(taskId: string, formData: FormData) {
   const title = str(formData, "title");
   if (!title) return;
-  const count = await prisma.checklistItem.count({ where: { taskId } });
   await prisma.checklistItem.create({
     data: {
       taskId,
       title,
-      order: count + 1,
+      order: 0,
       dueDate: dateOrNull(formData, "dueDate"),
     },
   });
+
+  // 追加後、締切日が近い順に並び直す(締切日未設定の項目は末尾へ、既存の並びを維持)
+  const items = await prisma.checklistItem.findMany({
+    where: { taskId },
+    orderBy: { createdAt: "asc" },
+  });
+  const sorted = [...items].sort((a, b) => {
+    const aTime = a.dueDate?.getTime() ?? Infinity;
+    const bTime = b.dueDate?.getTime() ?? Infinity;
+    return aTime - bTime;
+  });
+  await prisma.$transaction(
+    sorted.map((item, index) => prisma.checklistItem.update({ where: { id: item.id }, data: { order: index } }))
+  );
+
   revalidatePath(`/tasks/${taskId}`);
 }
 

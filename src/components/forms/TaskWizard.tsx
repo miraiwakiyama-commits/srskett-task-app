@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, unstable_rethrow } from "next/navigation";
 import { createTask, createGrantTask, createHrTask, createCustomCategoryTask } from "@/lib/actions/tasks";
 import { PAYROLL_SUBTYPE_LABELS } from "@/lib/constants";
@@ -20,6 +20,8 @@ type CustomCategory = { name: string };
 
 type HrSubType = "ONBOARDING" | "OFFBOARDING";
 type PayrollSubType = "MONTHLY" | "YEAREND" | "BONUS" | "OTHER";
+
+const LAST_CLIENT_STORAGE_KEY = "srk_last_client_id";
 
 const HR_STEPS = ["subType", "client", "name", "date", "assignee", "confirm"] as const;
 const PAYROLL_STEPS = ["subType", "client", "target", "title", "date", "assignee", "confirm"] as const;
@@ -200,6 +202,13 @@ export default function TaskWizard({
   async function handleSubmit() {
     setError(null);
     setSubmitting(true);
+    if (clientId) {
+      try {
+        localStorage.setItem(LAST_CLIENT_STORAGE_KEY, clientId);
+      } catch {
+        // localStorageが使えない環境では無視
+      }
+    }
     try {
       if (category === "HR") {
         const fd = new FormData();
@@ -727,21 +736,46 @@ function DateField({ value, onChange }: { value: string; onChange: (v: string) =
 }
 
 function ClientSelect({ clients, value, onChange }: { clients: Client[]; value: string; onChange: (v: string) => void }) {
+  const [lastClientId, setLastClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // SSR時点ではlocalStorageが存在しないため、マウント後(クライアント側)に読み込む
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLastClientId(localStorage.getItem(LAST_CLIENT_STORAGE_KEY));
+    } catch {
+      setLastClientId(null);
+    }
+  }, []);
+
+  const lastClient = clients.find((c) => c.id === lastClientId);
+
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="mt-4 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:w-96"
-    >
-      <option value="" disabled>
-        選択してください
-      </option>
-      {clients.map((c) => (
-        <option key={c.id} value={c.id}>
-          {c.name}
+    <div className="mt-4 flex flex-wrap items-center gap-2">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:w-96"
+      >
+        <option value="" disabled>
+          選択してください
         </option>
-      ))}
-    </select>
+        {clients.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      {lastClient && (
+        <button
+          type="button"
+          onClick={() => onChange(lastClient.id)}
+          className="whitespace-nowrap rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          前回の顧問先を設定({lastClient.name})
+        </button>
+      )}
+    </div>
   );
 }
 
