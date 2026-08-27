@@ -45,6 +45,7 @@ export default async function CalendarPage({
     title: string;
     category: string;
     clientName: string;
+    done: boolean;
   };
 
   const entries: CalendarEntry[] = [
@@ -57,6 +58,7 @@ export default async function CalendarPage({
         title: i.title,
         category: i.task.category,
         clientName: i.task.client.name,
+        done: i.done,
       })),
     ...tasksNoChecklist
       .filter((t) => t.dueDate !== null)
@@ -67,6 +69,7 @@ export default async function CalendarPage({
         title: t.title,
         category: t.category,
         clientName: t.client.name,
+        done: t.status === "DONE",
       })),
   ].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
@@ -169,7 +172,7 @@ export default async function CalendarPage({
                         <span
                           className={`h-1.5 w-1.5 shrink-0 rounded-full ${categoryColor(categoryColorMap, e.category).dot}`}
                         />
-                        <span className="truncate">{e.title}</span>
+                        <span className={`truncate ${e.done ? "line-through text-slate-400" : ""}`}>{e.title}</span>
                       </Link>
                     ))}
                     {dayEntries.length > 3 && (
