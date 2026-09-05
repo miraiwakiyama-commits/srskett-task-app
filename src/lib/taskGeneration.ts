@@ -217,7 +217,7 @@ export async function generateCustomCategoryTask(params: {
 
 /**
  * 全クライアント(締め日/支払日が設定済み)の指定年月分の月次給与タスクを生成する。
- * 起算日は締め日とし、テンプレートのオフセット日数から各項目の期限を算出する(他の種別と同じ方式)。
+ * 起算日は支払日とし、テンプレートのオフセット日数から各項目の期限を算出する(他の種別と同じ方式)。
  * 既に同じ periodKey のタスクが存在する場合はスキップし、重複生成を防ぐ。
  */
 export async function generateMonthlyPayrollTasks(year: number, month1: number) {
@@ -238,7 +238,7 @@ export async function generateMonthlyPayrollTasks(year: number, month1: number) 
     });
     if (existing) continue;
 
-    const { closingDate, payDate } = computePayrollDates(
+    const { payDate } = computePayrollDates(
       year,
       month1,
       client.payrollClosingDay!,
@@ -246,13 +246,13 @@ export async function generateMonthlyPayrollTasks(year: number, month1: number) 
       client.payrollPayMonthOffset
     );
 
-    const taskDueDate = template ? computeDueDateFromItems(closingDate, template.items) ?? payDate : payDate;
+    const taskDueDate = template ? computeDueDateFromItems(payDate, template.items) ?? payDate : payDate;
     const defaultTitle = `${client.name} 給与計算 ${year}年${month1}月分`;
     const title =
       template?.titleTemplate
         ? renderTitleTemplate(template.titleTemplate, {
             client: client.name,
-            date: fmt(closingDate),
+            date: fmt(payDate),
             subType: template.subType,
             templateName: template.name,
             year: String(year),
@@ -269,8 +269,8 @@ export async function generateMonthlyPayrollTasks(year: number, month1: number) 
         dueDate: taskDueDate,
         status: "NOT_STARTED",
         periodKey,
-        baseDate: template ? closingDate : undefined,
-        baseDateLabel: template ? template.baseDateLabel || "給与締め日" : undefined,
+        baseDate: template ? payDate : undefined,
+        baseDateLabel: template ? template.baseDateLabel || "給与支払日" : undefined,
       },
     });
 
@@ -280,7 +280,7 @@ export async function generateMonthlyPayrollTasks(year: number, month1: number) 
           taskId: task.id,
           title: item.title,
           order: item.order,
-          dueDate: addDaysToDate(closingDate, item.dueOffsetDays),
+          dueDate: addDaysToDate(payDate, item.dueOffsetDays),
           dueOffsetDays: item.dueOffsetDays,
         })),
       });
